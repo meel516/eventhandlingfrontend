@@ -18,7 +18,7 @@ export default function Home(){
                 const data={email:e.target.email.value,name:e.target.name.value}
                 e.preventDefault()
                 try{
-                    let submitting =await axios.post("http://localhost:4000/login",data)
+                    let submitting =await axios.post("https://eventhandling.onrender.com/login",data)
                     if(submitting.status ==200){
                         localStorage.setItem("ACCESS_TOKEN",submitting.data)
                         navigate(`/user/${data.name}`)
@@ -29,8 +29,8 @@ export default function Home(){
                     if(err.response.status==404 && err.response.data=="user not found"){
                         try{
 
-                      let registering =await axios.post("http://localhost:4000/register",data)
-                      let login=await axios.post("http://localhost:4000/login",data)
+                      let registering =await axios.post("https://eventhandling.onrender.com/register",data)
+                      let login=await axios.post("https://eventhandling.onrender.com/login",data)
                       localStorage.setItem("ACCESS_TOKEN",login.data)
                       navigate(`/user/${data.name}`)
                       console.log(login.data)
