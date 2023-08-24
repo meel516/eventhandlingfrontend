@@ -199,7 +199,7 @@ if(audio)audio.getTracks().forEach((track) => track.stop())
         </DialogActions>
       </Dialog>
     </div>
-   { !err||<div className='position-fixed' style={{left:"35vw",top:"40vh"}}>
+   { !err||<div className='position-fixed' style={{left:"35vw"}}>
     <Alert severity="error">
         <AlertTitle>Error</AlertTitle>
         {err} — <strong>check it out!</strong>
