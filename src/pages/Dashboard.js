@@ -1,19 +1,36 @@
-
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import {useState,useEffect,useRef} from "react"
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Avatar from '@mui/material/Avatar';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import StopIcon from '@mui/icons-material/Stop';
-
+import TextField from '@mui/material/TextField';
 import { Button,IconButton} from '@mui/material';
 import { useNavigate, useParams } from "react-router-dom";
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 export default function Dashboard(){
     const [toggle,setToggle] = useState(true)
     const [start,setStart] =useState(false)
     const [stop,setStop] =useState(false)
+    const [downloadopen, setdownloadOpen] = useState(false);
+      let [err,setErr]=useState('')
+
+    const handleClickOpen = () => {
+      setdownloadOpen(true);
+    };
+  
+    const handleClickClose = () => {
+      setdownloadOpen(false);
+    };
     const eventref = useRef(true)
     const resolverref=useRef('')
+    const downloadref = useRef('')
+    const downloadname =useRef('sample.webm')
     const navigate =useNavigate()
     const [anchorEl, setAnchorEl] = useState(null);
     const {name} =useParams()
@@ -35,53 +52,82 @@ localStorage.removeItem("ACCESS_TOKEN")
     }
 useEffect(()=>{
     if(start){
+      
     (async ()=>{
-        let stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,audio:true
-        });
-      //   let audio = await navigator.mediaDevices.getUserMedia({ 
-      //     audio: true, video: false })
-        const mime = MediaRecorder.isTypeSupported("video/webm; codecs=vp9", "audio/webm","audio/webm;codecs=opus") 
-        ? "video/webm; codecs=vp9" 
-        : "video/webm"
-let mediaRecorder = new MediaRecorder(stream, {
-   mimeType: mime
-})
+      let audio
+      let stream
+      let mixedStream
+      try{
+         stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true
+        });}
+        catch(err){
+          console.log(err)
+          setErr("permission denied to share screen")
+          setTimeout(()=>setErr(''),2000)
+          setStart(false)
+        setToggle(true)
+        }
+        try{
+        audio = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100,
+          },
+        });}
+        catch(err){
+          console.log(err)
+          setErr("permission denied to microphone")
+          setTimeout(()=>setErr(''),2000)
+        }
+        if(audio&&stream){
+        mixedStream = new MediaStream([...stream.getTracks(), ...audio.getTracks()]);}
+       else if(stream){
+        mixedStream = new MediaStream([...stream.getTracks()])
+       }
+   
+      if(stream){
+     let recorder = new MediaRecorder(mixedStream);
+    
+       
 
 let chunks = []
-mediaRecorder.addEventListener('dataavailable', function(e) {
-   chunks.push(e.data)
-})
-mediaRecorder.addEventListener('stop', function(){
-  let blob = new Blob(chunks, {
-      type: chunks[0].type
-  })
+
+recorder.ondataavailable = (e)=>{
+	chunks.push(e.data);
+}
+recorder.onstop = (e)=> {
+	const blob = new Blob(chunks, { 'type' : 'video/mp4' });
+	chunks = [];
   let url = URL.createObjectURL(blob)
 
-
-
+let download = new Promise((resolve,reject)=>{
+downloadref.current= resolve
+})
+download.then(()=>{
   let a = document.createElement('a')
   a.href = url
-  a.download = 'video.webm'
+  a.download = downloadname.current
   a.click()
 })
 
-//we have to start the recorder manually
-mediaRecorder.start()
+ 
+ 
+}
+
+recorder.start()
 setStop(true)
 
 let promise =new Promise((resolve,reject)=>{
     resolverref.current = resolve
 
 })
-promise.then(()=>{mediaRecorder.stop();console.log('promise ended')})
-//   document.getElementById("stop").addEventListener('click',()=>{
-//     mediaRecorder.stop()
-//     setToggle(true)
-// console.log('clicked')
-// })
+promise.then(()=>{recorder.stop();console.log('promise ended');stream.getTracks().forEach((track) => track.stop());
+if(audio)audio.getTracks().forEach((track) => track.stop())
+})
 
-      })()}
+    }})()}
 
 },[toggle])
     return <>
@@ -99,6 +145,7 @@ promise.then(()=>{mediaRecorder.stop();console.log('promise ended')})
         setStop(false)
         setToggle(true)
         resolverref.current()
+        handleClickOpen()
         }}>stop</Button>}
         </div>
         <h6 className="mx-2">{name}</h6>
@@ -128,12 +175,36 @@ promise.then(()=>{mediaRecorder.stop();console.log('promise ended')})
     </div>
         </div>
         </nav>
-    {/* <div>
-    <p>{status}</p>
-      <button onClick={startRecording}>Start Recording</button>
-      <button onClick={stopRecording}>Stop Recording</button>
-      <video src={mediaBlobUrl} controls autoPlay loop />
-    </div> */}
+     <div>
+      <Dialog open={downloadopen} onClose={handleClickClose}>
+        <DialogTitle>Download the clip?</DialogTitle>
+        <DialogContent>
+      
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="enter your filename"
+            type="text"
+            fullWidth
+            variant="standard"
+            onChange={(e)=>downloadname.current=e.target.value}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClickClose}>Cancel</Button>
+          <Button onClick={()=>{
+            downloadref.current()
+            handleClickClose()}}>download</Button>
+        </DialogActions>
+      </Dialog>
+    </div>
+   { !err||<div className='position-fixed' style={{left:"35vw",top:"40vh"}}>
+    <Alert severity="error">
+        <AlertTitle>Error</AlertTitle>
+        {err} — <strong>check it out!</strong>
+      </Alert>
+      </div>}
    
     <footer>
 
